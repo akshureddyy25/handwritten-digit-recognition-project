@@ -1,0 +1,127 @@
+import tensorflow as tf
+from tensorflow.keras import layers, models
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.utils import to_categorical
+import matplotlib.pyplot as plt
+
+# Load and preprocess the MNIST dataset
+(train_images, train_labels), (test_images, test_labels) = mnist.load_data()
+
+# Reshape and normalize the input images
+train_images = train_images.reshape((60000, 28, 28, 1)).astype('float32') / 255
+test_images = test_images.reshape((10000, 28, 28, 1)).astype('float32') / 255
+
+# One-hot encode the labels
+train_labels = to_categorical(train_labels)
+test_labels = to_categorical(test_labels)
+
+# Build the CNN model
+model = models.Sequential()
+model.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1)))
+model.add(layers.MaxPooling2D((2, 2)))
+model.add(layers.Conv2D(64, (3, 3), activation='relu'))
+model.add(layers.MaxPooling2D((2, 2)))
+model.add(layers.Conv2D(64, (3, 3), activation='relu'))
+model.add(layers.Flatten())
+model.add(layers.Dense(64, activation='relu'))
+model.add(layers.Dense(10, activation='softmax'))
+
+# Compile the model
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Train the model
+history = model.fit(train_images, train_labels, epochs=5, batch_size=64, validation_split=0.2)
+
+# Evaluate the model on the test set
+test_loss, test_acc = model.evaluate(test_images, test_labels)
+print(f'Test accuracy: {test_acc}')
+
+# Plot the training history
+acc = history.history['accuracy']
+val_acc = history.history['val_accuracy']
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+
+epochs = range(1, len(acc) + 1)
+
+plt.figure(figsize=(12, 4))
+plt.subplot(1, 2, 1)
+plt.plot(epochs, acc, 'bo', label='Training acc')
+plt.plot(epochs, val_acc, 'b', label='Validation acc')
+plt.title('Training and validation accuracy')
+plt.legend()
+
+plt.subplot(1, 2, 2)
+plt.plot(epochs, loss, 'bo', label='Training loss')
+plt.plot(epochs, val_loss, 'b', label='Validation loss')
+plt.title('Training and validation loss')
+plt.legend()
+
+plt.show()
+
+interface code:
+import tkinter as tk
+from tkinter import Canvas, Button, Label, filedialog
+import numpy as np
+from tensorflow.keras.preprocessing import image
+from tensorflow.keras.models import load_model
+from PIL import Image, ImageTk
+
+# Load the trained CNN model
+model_path = 'C:/Users/Sai Akshitha/digit_recognition.keras'  # Replace with the actual path to your trained model
+model = load_model(model_path)
+
+class HandwrittenDigitRecognitionApp:
+    def __init__(self, master):
+        self.master = master
+        self.master.title("Handwritten Digit Recognition")
+
+        self.canvas = Canvas(self.master, width=280, height=280, bg="white", bd=2)
+        self.canvas.pack(pady=10)
+
+        self.label = Label(self.master, text="Prediction: ")
+        self.label.pack()
+
+        self.browse_button = Button(self.master, text="Browse Image", command=self.browse_image)
+        self.browse_button.pack(pady=5)
+
+        self.predict_button = Button(self.master, text="Predict Digit", command=self.predict_digit)
+        self.predict_button.pack(pady=5)
+
+        self.image_path = None
+
+    def browse_image(self):
+        self.image_path = filedialog.askopenfilename(filetypes=[("Image files", "*.png;*.jpg;*.jpeg")])
+        if self.image_path:
+            self.display_image()
+
+    def display_image(self):
+        try:
+            img = Image.open(self.image_path)
+            img = img.resize((280, 280), Image.LANCZOS)  # Use LANCZOS for resizing
+            img = ImageTk.PhotoImage(img)
+            self.canvas.create_image(0, 0, anchor=tk.NW, image=img)
+            self.canvas.image = img
+        except Exception as e:
+            self.label.config(text=f"Error: {str(e)}")
+
+    def predict_digit(self):
+        if self.image_path:
+            try:
+                img = image.load_img(self.image_path, target_size=(28, 28), color_mode='grayscale')
+                img_array = image.img_to_array(img)
+                img_array = np.expand_dims(img_array, axis=0)
+                img_array /= 255.0
+
+                prediction = model.predict(img_array)
+                predicted_digit = np.argmax(prediction[0])
+
+                result_text = f"Prediction: {predicted_digit}"
+                self.label.config(text=result_text)
+            except Exception as e:
+                self.label.config(text=f"Prediction Error: {str(e)}")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = HandwrittenDigitRecognitionApp(root)
+    root.mainloop()
